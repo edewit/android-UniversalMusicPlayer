@@ -18,7 +18,6 @@ package com.example.android.uamp.ui;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Bitmap;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.app.FragmentActivity;
@@ -34,7 +33,9 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.example.android.uamp.AlbumArtCache;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.example.android.uamp.AlbumArtConstants;
 import com.example.android.uamp.R;
 import com.example.android.uamp.utils.MediaIDHelper;
 
@@ -62,8 +63,6 @@ public class MediaItemViewHolder {
 
         final MediaItemViewHolder holder;
 
-        Integer cachedState = STATE_INVALID;
-
         if (convertView == null) {
             convertView = LayoutInflater.from(activity)
                     .inflate(R.layout.media_list_item, parent, false);
@@ -74,54 +73,26 @@ public class MediaItemViewHolder {
             convertView.setTag(holder);
         } else {
             holder = (MediaItemViewHolder) convertView.getTag();
-            cachedState = (Integer) convertView.getTag(R.id.tag_mediaitem_state_cache);
         }
 
         MediaDescriptionCompat description = item.getDescription();
         holder.mTitleView.setText(description.getTitle());
         holder.mDescriptionView.setText(description.getSubtitle());
 
-        // If the state of convertView is different, we need to adapt the view to the
-        // new state.
-        int state = getMediaItemState(activity, item);
-        if (cachedState == null || cachedState != state) {
-//            Drawable drawable = getDrawableByState(activity, state, item);
-//            if (drawable != null) {
-//                holder.mImageView.setImageDrawable(drawable);
-//                holder.mImageView.setVisibility(View.VISIBLE);
-//            } else {
-//                holder.mImageView.setVisibility(View.GONE);
-//            }
-
-            String artUrl = null;
-            if (item.getDescription().getIconUri() != null) {
-                artUrl = item.getDescription().getIconUri().toString();
-            }
-            Bitmap art = item.getDescription().getIconBitmap();
-            AlbumArtCache cache = AlbumArtCache.getInstance();
-            if (art == null && artUrl != null) {
-                art = cache.getIconImage(artUrl);
-            }
-
-            if (art != null) {
-                holder.mImageView.setImageBitmap(art);
-            } else if (artUrl != null && artUrl.startsWith("file")) {
-                cache.fetch(artUrl, new AlbumArtCache.FetchListener() {
-                            @Override
-                            public void onFetched(String artUrl, Bitmap bitmap, Bitmap icon) {
-                                if (icon != null) {
-                                    holder.mImageView.setImageBitmap(icon);
-                                }
-                            }
-                        }
-                );
-            } else {
-                holder.mImageView.setVisibility(View.GONE);
-            }
-
-            convertView.setTag(R.id.tag_mediaitem_state_cache, state);
+        String artUrl = null;
+        if (item.getDescription().getIconUri() != null) {
+            artUrl = item.getDescription().getIconUri().toString();
         }
 
+        if (artUrl != null) {
+            Glide.with(convertView.getContext()).load(artUrl).asBitmap()
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .override(AlbumArtConstants.MAX_ART_WIDTH_ICON, AlbumArtConstants.MAX_ART_HEIGHT_ICON)
+                    .centerCrop()
+                    .into(holder.mImageView);
+        } else {
+            holder.mImageView.setVisibility(View.GONE);
+        }
         return convertView;
     }
 
