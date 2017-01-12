@@ -37,7 +37,7 @@ public class FolderSource implements MusicProviderSource {
                     tracks.addAll(traverse(file));
                 } else try {
                     Mp3File mp3file = new Mp3File(file.getPath());
-                    tracks.add(buildMediaItem(file, mp3file.getId3v2Tag()));
+                    tracks.add(buildMediaItem(file, mp3file));
                 } catch (Exception e) {
                     //ignore this file
                 }
@@ -46,14 +46,15 @@ public class FolderSource implements MusicProviderSource {
         return tracks;
     }
 
-    private MediaMetadataCompat buildMediaItem(File file, ID3v2 id3v2) {
+    private MediaMetadataCompat buildMediaItem(File file, Mp3File mp3File) {
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
+        ID3v2 id3v2 = mp3File.getId3v2Tag();
         builder
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, file.getAbsolutePath())
                 .putString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE, file.toURI().toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, id3v2.getAlbum())
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, id3v2.getArtist())
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, id3v2.getLength())
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mp3File.getLengthInMilliseconds())
                 .putString(MediaMetadataCompat.METADATA_KEY_GENRE, file.getParentFile().getName());
 
         File cover;
