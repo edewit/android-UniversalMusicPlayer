@@ -1,11 +1,13 @@
 package com.example.android.uamp.model;
 
 import android.annotation.TargetApi;
-import android.media.MediaMetadataRetriever;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.support.v4.media.MediaMetadataCompat;
+
+import com.mpatric.mp3agic.ID3v2;
+import com.mpatric.mp3agic.Mp3File;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,18 +16,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM;
-import static android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST;
-import static android.media.MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER;
-import static android.media.MediaMetadataRetriever.METADATA_KEY_DURATION;
-import static android.media.MediaMetadataRetriever.METADATA_KEY_TITLE;
-
 /**
  * @author edewit
  */
 
 public class FolderSource implements MusicProviderSource {
-    private MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
     @Override
     public Iterator<MediaMetadataCompat> iterator() {
@@ -41,9 +36,9 @@ public class FolderSource implements MusicProviderSource {
                 if (file.isDirectory()) {
                     tracks.addAll(traverse(file));
                 } else try {
-                    retriever.setDataSource(file.getPath());
-                    tracks.add(buildMediaItem(file));
-                } catch (RuntimeException e) {
+                    Mp3File mp3file = new Mp3File(file.getPath());
+                    tracks.add(buildMediaItem(file, mp3file.getId3v2Tag()));
+                } catch (Exception e) {
                     //ignore this file
                 }
             }
@@ -51,31 +46,27 @@ public class FolderSource implements MusicProviderSource {
         return tracks;
     }
 
-    private MediaMetadataCompat buildMediaItem(File file) {
+    private MediaMetadataCompat buildMediaItem(File file, ID3v2 id3v2) {
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
         builder
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, file.getAbsolutePath())
                 .putString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE, file.toURI().toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, retriever.extractMetadata(METADATA_KEY_ALBUM))
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, retriever.extractMetadata(METADATA_KEY_ARTIST));
-
-        String duration = retriever.extractMetadata(METADATA_KEY_DURATION);
-        if (duration != null) {
-            builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, Long.parseLong(retriever.extractMetadata(METADATA_KEY_DURATION)));
-        }
-        builder.putString(MediaMetadataCompat.METADATA_KEY_GENRE, file.getParentFile().getName());
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, id3v2.getAlbum())
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, id3v2.getArtist())
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, id3v2.getLength())
+                .putString(MediaMetadataCompat.METADATA_KEY_GENRE, file.getParentFile().getName());
 
         File cover;
         try {
             cover = File.createTempFile("cover", file.getName());
-            AsyncTask.execute(new AlbumArtSaver(cover, retriever.getEmbeddedPicture()));
+            AsyncTask.execute(new AlbumArtSaver(cover, id3v2.getAlbumImage()));
             builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, cover.toURI().toString());
         } catch (IOException e) {
             //ignore
         }
 
         return builder
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, retriever.extractMetadata(METADATA_KEY_TITLE))
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, id3v2.getTitle())
                 .build();
     }
 
