@@ -290,15 +290,7 @@ public class MediaBrowserFragment extends Fragment {
             mMediaFragmentListener.setToolbarTitle(null);
             return;
         }
-
-        MediaBrowserCompat mediaBrowser = mMediaFragmentListener.getMediaBrowser();
-        mediaBrowser.getItem(mMediaId, new MediaBrowserCompat.ItemCallback() {
-            @Override
-            public void onItemLoaded(MediaBrowserCompat.MediaItem item) {
-                mMediaFragmentListener.setToolbarTitle(
-                        item.getDescription().getTitle());
-            }
-        });
+        mMediaFragmentListener.setToolbarTitle(mMediaId.substring(mMediaId.lastIndexOf("/") + 1));
     }
 
     // An adapter for showing the list of browsed MediaItem's
