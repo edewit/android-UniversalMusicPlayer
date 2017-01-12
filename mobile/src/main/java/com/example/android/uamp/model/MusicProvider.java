@@ -300,10 +300,8 @@ public class MusicProvider {
             return mediaItems;
         }
 
-        if (MEDIA_ID_ROOT.equals(mediaId)) {
-            mediaItems.add(createBrowsableMediaItemForRoot(resources));
 
-        } else if (MEDIA_ID_MUSICS_BY_GENRE.equals(mediaId)) {
+        if (MEDIA_ID_MUSICS_BY_GENRE.equals(mediaId)) {
             for (String genre : getGenres()) {
                 mediaItems.add(createBrowsableMediaItemForGenre(genre, resources));
             }

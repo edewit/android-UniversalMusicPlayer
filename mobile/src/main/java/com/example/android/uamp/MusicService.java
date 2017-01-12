@@ -55,7 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
-import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_ROOT;
+import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE;
 
 /**
  * This class provides a MediaBrowser through a service. It exposes the media library to a browsing
@@ -316,7 +316,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
             // on onLoadChildren, handle it accordingly.
         }
 
-        return new BrowserRoot(MEDIA_ID_ROOT, null);
+        return new BrowserRoot(MEDIA_ID_MUSICS_BY_GENRE, null);
     }
 
     @Override
