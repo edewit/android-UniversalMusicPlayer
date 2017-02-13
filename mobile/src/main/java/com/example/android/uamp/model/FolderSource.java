@@ -1,13 +1,15 @@
 package com.example.android.uamp.model;
 
 import android.annotation.TargetApi;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.support.v4.media.MediaMetadataCompat;
 
 import com.mpatric.mp3agic.ID3v2;
 import com.mpatric.mp3agic.Mp3File;
+
+import org.jboss.aerogear.android.store.DataManager;
+import org.jboss.aerogear.android.store.Store;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,22 +26,36 @@ public class FolderSource implements MusicProviderSource {
 
     @Override
     public Iterator<MediaMetadataCompat> iterator() {
-        File music = new File(Environment.getExternalStorageDirectory(), "Music");
+        new Thread(new Runnable() {
 
-        return traverse(music).iterator();
+            @Override
+            public void run() {
+                File music = new File(Environment.getExternalStorageDirectory(), "Music");
+
+                Store<Media> store = (Store<Media>) DataManager.getStore("musicStore");
+                traverse(music, store).iterator();
+            }
+        }).start();
+
+        return null;
     }
 
-    private List<MediaMetadataCompat> traverse(File dir) {
+    private List<MediaMetadataCompat> traverse(File dir, Store<Media> store) {
+
         ArrayList<MediaMetadataCompat> tracks = new ArrayList<>();
         if (dir.exists()) {
             for (File file : dir.listFiles()) {
                 if (file.isDirectory()) {
-                    tracks.addAll(traverse(file));
+                    tracks.addAll(traverse(file, store));
                 } else try {
-                    Mp3File mp3file = new Mp3File(file.getPath());
-                    tracks.add(buildMediaItem(file, mp3file));
+                    if (store.read(file) == null) {
+                        Mp3File mp3file = new Mp3File(file.getPath());
+                        MediaMetadataCompat mediaItem = buildMediaItem(file, mp3file);
+                        tracks.add(mediaItem);
+                        store.save(new Media(mediaItem));
+                    }
                 } catch (Exception e) {
-                    //ignore this file
+                    e.printStackTrace();
                 }
             }
         }
@@ -60,7 +76,7 @@ public class FolderSource implements MusicProviderSource {
         File cover;
         try {
             cover = File.createTempFile("cover", file.getName());
-            AsyncTask.execute(new AlbumArtSaver(cover, id3v2.getAlbumImage()));
+            new Thread(new AlbumArtSaver(cover, id3v2.getAlbumImage())).start();
             builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, cover.toURI().toString());
         } catch (IOException e) {
             //ignore

@@ -16,6 +16,7 @@
 
 package com.example.android.uamp.model;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -28,9 +29,13 @@ import com.example.android.uamp.R;
 import com.example.android.uamp.utils.LogHelper;
 import com.example.android.uamp.utils.MediaIDHelper;
 
+import org.jboss.aerogear.android.store.DataManager;
+import org.jboss.aerogear.android.store.sql.SQLStore;
+import org.jboss.aerogear.android.store.sql.SQLStoreConfiguration;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -38,7 +43,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE;
-import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_ROOT;
 import static com.example.android.uamp.utils.MediaIDHelper.createMediaID;
 
 /**
@@ -54,6 +58,7 @@ public class MusicProvider {
     // Categorized caches for music track data:
     private ConcurrentMap<String, List<MediaMetadataCompat>> mMusicListByGenre;
     private final ConcurrentMap<String, MutableMediaMetadata> mMusicListById;
+    private SQLStore<Media> musicStore;
 
     private final Set<String> mFavoriteTracks;
 
@@ -67,13 +72,20 @@ public class MusicProvider {
         void onMusicCatalogReady(boolean success);
     }
 
-    public MusicProvider() {
-        this(new FolderSource());
+    public MusicProvider(Context context) {
+        this(context, new FolderSource());
     }
-    public MusicProvider(MusicProviderSource source) {
+
+    public MusicProvider(Context context, MusicProviderSource source) {
         mSource = source;
+
         mMusicListByGenre = new ConcurrentHashMap<>();
         mMusicListById = new ConcurrentHashMap<>();
+
+        musicStore = (SQLStore<Media>) DataManager.config("musicStore", SQLStoreConfiguration.class)
+                .withContext(context).store(Media.class);
+        musicStore.openSync();
+
         mFavoriteTracks = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     }
 
@@ -254,18 +266,19 @@ public class MusicProvider {
         }.execute();
     }
 
-    private synchronized void buildListsByGenre() {
+    private synchronized void buildListsByGenre(Collection<Media> media) {
         ConcurrentMap<String, List<MediaMetadataCompat>> newMusicListByGenre = new ConcurrentHashMap<>();
 
-        for (MutableMediaMetadata m : mMusicListById.values()) {
-            String genre = m.metadata.getString(MediaMetadataCompat.METADATA_KEY_GENRE);
+        for (Media m : media) {
+            String genre = m.buildMediaItem().getString(MediaMetadataCompat.METADATA_KEY_GENRE);
             List<MediaMetadataCompat> list = newMusicListByGenre.get(genre);
             if (list == null) {
                 list = new ArrayList<>();
                 newMusicListByGenre.put(genre, list);
             }
-            list.add(m.metadata);
+            list.add(m.buildMediaItem());
         }
+
         mMusicListByGenre = newMusicListByGenre;
     }
 
@@ -274,13 +287,16 @@ public class MusicProvider {
             if (mCurrentState == State.NON_INITIALIZED) {
                 mCurrentState = State.INITIALIZING;
 
-                Iterator<MediaMetadataCompat> tracks = mSource.iterator();
-                while (tracks.hasNext()) {
-                    MediaMetadataCompat item = tracks.next();
-                    String musicId = item.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID);
-                    mMusicListById.put(musicId, new MutableMediaMetadata(musicId, item));
+                mSource.iterator();
+
+                Collection<Media> media = musicStore.readAll();
+                for (Media m : media) {
+                    MediaMetadataCompat mediaItem = m.buildMediaItem();
+                    String musicId = mediaItem.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID);
+                    mMusicListById.put(musicId, new MutableMediaMetadata(musicId, mediaItem));
                 }
-                buildListsByGenre();
+
+                buildListsByGenre(media);
                 mCurrentState = State.INITIALIZED;
             }
         } finally {
@@ -318,18 +334,6 @@ public class MusicProvider {
         return mediaItems;
     }
 
-    private MediaBrowserCompat.MediaItem createBrowsableMediaItemForRoot(Resources resources) {
-        MediaDescriptionCompat description = new MediaDescriptionCompat.Builder()
-                .setMediaId(MEDIA_ID_MUSICS_BY_GENRE)
-                .setTitle(resources.getString(R.string.browse_genres))
-                .setSubtitle(resources.getString(R.string.browse_genre_subtitle))
-                .setIconUri(Uri.parse("android.resource://" +
-                        "com.example.android.uamp/drawable/ic_by_genre"))
-                .build();
-        return new MediaBrowserCompat.MediaItem(description,
-                MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
-    }
-
     private MediaBrowserCompat.MediaItem createBrowsableMediaItemForGenre(String genre,
                                                                     Resources resources) {
         MediaDescriptionCompat description = new MediaDescriptionCompat.Builder()
@@ -337,6 +341,8 @@ public class MusicProvider {
                 .setTitle(genre)
                 .setSubtitle(resources.getString(
                         R.string.browse_musics_by_genre_subtitle, genre))
+                .setIconUri(Uri.parse("android.resource://" +
+                        "com.example.android.uamp/drawable/ic_by_genre"))
                 .build();
         return new MediaBrowserCompat.MediaItem(description,
                 MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
