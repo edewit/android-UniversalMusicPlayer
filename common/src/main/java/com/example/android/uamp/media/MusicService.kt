@@ -37,12 +37,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.extensions.flag
-import com.example.android.uamp.media.library.BrowseTree
-import com.example.android.uamp.media.library.JsonSource
-import com.example.android.uamp.media.library.MEDIA_SEARCH_SUPPORTED
-import com.example.android.uamp.media.library.MusicSource
-import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
-import com.example.android.uamp.media.library.UAMP_EMPTY_ROOT
+import com.example.android.uamp.media.library.*
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ExoPlayerFactory
@@ -155,7 +150,7 @@ open class MusicService : MediaBrowserServiceCompat() {
 
         // The media library is built from a remote JSON file. We'll create the source here,
         // and then use a suspend function to perform the download off the main thread.
-        mediaSource = JsonSource(context = this, source = remoteJsonSource)
+        mediaSource = FolderSource(context = this, filesDir = baseContext.filesDir)
         serviceScope.launch {
             mediaSource.load()
         }

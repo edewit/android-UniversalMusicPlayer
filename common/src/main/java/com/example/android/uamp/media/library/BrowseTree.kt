@@ -72,28 +72,6 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
      * TODO: Expand to allow more browsing types.
      */
     init {
-        val rootList = mediaIdToChildren[UAMP_BROWSABLE_ROOT] ?: mutableListOf()
-
-        val recommendedMetadata = MediaMetadataCompat.Builder().apply {
-            id = UAMP_RECOMMENDED_ROOT
-            title = context.getString(R.string.recommended_title)
-            albumArtUri = RESOURCE_ROOT_URI +
-                    context.resources.getResourceEntryName(R.drawable.ic_recommended)
-            flag = MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
-        }.build()
-
-        val albumsMetadata = MediaMetadataCompat.Builder().apply {
-            id = UAMP_ALBUMS_ROOT
-            title = context.getString(R.string.albums_title)
-            albumArtUri = RESOURCE_ROOT_URI +
-              context.resources.getResourceEntryName(R.drawable.ic_album)
-            flag = MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
-        }.build()
-
-        rootList += recommendedMetadata
-        rootList += albumsMetadata
-        mediaIdToChildren[UAMP_BROWSABLE_ROOT] = rootList
-
         musicSource.forEach { mediaItem ->
             val albumMediaId = mediaItem.album.urlEncoded
             val albumChildren = mediaIdToChildren[albumMediaId] ?: buildAlbumRoot(mediaItem)
@@ -102,11 +80,14 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
             // Add the first track of each album to the 'Recommended' category
             if (mediaItem.trackNumber == 1L){
                 val recommendedChildren = mediaIdToChildren[UAMP_RECOMMENDED_ROOT]
-                                        ?: mutableListOf()
+                        ?: mutableListOf()
                 recommendedChildren += mediaItem
                 mediaIdToChildren[UAMP_RECOMMENDED_ROOT] = recommendedChildren
             }
         }
+
+        val rootList = mediaIdToChildren[UAMP_ALBUMS_ROOT] ?: mutableListOf()
+        mediaIdToChildren[UAMP_BROWSABLE_ROOT] = rootList
     }
 
     /**

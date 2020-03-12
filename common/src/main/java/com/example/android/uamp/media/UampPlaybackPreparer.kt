@@ -84,7 +84,7 @@ class UampPlaybackPreparer(
                 // Since the playlist was probably based on some ordering (such as tracks
                 // on an album), find which window index to play first so that the song the
                 // user actually wants to hear plays first.
-                val initialWindowIndex = metadataList.indexOf(itemToPlay)
+                val initialWindowIndex = 0//metadataList.indexOf(itemToPlay)
 
                 exoPlayer.prepare(mediaSource)
                 exoPlayer.seekTo(initialWindowIndex, 0)

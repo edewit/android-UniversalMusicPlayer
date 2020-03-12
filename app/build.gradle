@@ -25,6 +25,7 @@ android {
         applicationId "com.example.android.uamp.next"
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
 
         minSdkVersion rootProject.minSdkVersion
         targetSdkVersion rootProject.targetSdkVersion
